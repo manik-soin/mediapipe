@@ -16,10 +16,9 @@
 package com.google.mediapipe.examples.poselandmarker
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -28,16 +27,23 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.math.max
 import kotlin.math.min
 
+
+
+
+
+
 class OverlayView(context: Context?, attrs: AttributeSet?) :
     View(context, attrs) {
 
     private var results: PoseLandmarkerResult? = null
     private var pointPaint = Paint()
     private var linePaint = Paint()
+    private var ballPaint = Paint()
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
     private var imageHeight: Int = 1
+    var ballCounter = 0 // Initialize the counter outside of the loop
 
     init {
         initPaints()
@@ -47,6 +53,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         results = null
         pointPaint.reset()
         linePaint.reset()
+        ballPaint.reset()
         invalidate()
         initPaints()
     }
@@ -57,34 +64,73 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         linePaint.strokeWidth = LANDMARK_STROKE_WIDTH
         linePaint.style = Paint.Style.STROKE
 
-        pointPaint.color = Color.YELLOW
-        pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
+        pointPaint.color = Color.WHITE
+        pointPaint.strokeWidth = 20F
         pointPaint.style = Paint.Style.FILL
+
+
+        ballPaint.color = Color.RED
+        ballPaint.strokeWidth = 30F
+        ballPaint.style = Paint.Style.FILL
     }
 
-    override fun draw(canvas: Canvas) {
-        super.draw(canvas)
-        results?.let { poseLandmarkerResult ->
-            for(landmark in poseLandmarkerResult.landmarks()) {
-                for(normalizedLandmark in landmark) {
-                    canvas.drawPoint(
-                        normalizedLandmark.x() * imageWidth * scaleFactor,
-                        normalizedLandmark.y() * imageHeight * scaleFactor,
-                        pointPaint
-                    )
-                }
+override fun draw(canvas: Canvas) {
+    super.draw(canvas)
+    val netBitmap = BitmapFactory.decodeResource(resources, R.drawable.net)
+    val resizedBitmap = Bitmap.createScaledBitmap(netBitmap, 320, 320, false)
 
-                PoseLandmarker.POSE_LANDMARKS.forEach {
-                    canvas.drawLine(
-                        poseLandmarkerResult.landmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor,
-                        linePaint)
-                }
+    canvas.drawBitmap(resizedBitmap, 400F, 100F, null)
+
+
+    results?.let { poseLandmarkerResult ->
+        for(landmark in poseLandmarkerResult.landmarks()) {
+            Log.i("test==",landmark[18].toString())
+            val ballBitmap = BitmapFactory.decodeResource(resources, R.drawable.ball)
+            val resizedBitmap = Bitmap.createScaledBitmap(ballBitmap, 320, 320, false)
+
+            val ballX = landmark[18].x() * imageWidth * scaleFactor - 160
+            val ballY = landmark[18].y() * imageHeight * scaleFactor - 160
+
+
+            Log.i("test==", ballX.toString())
+
+            // Check if the ball is within the specified range and increment the counter if it is
+            if ((ballX >= 0) && (ballX <= 500) && (ballY >= 0) && (ballY <= 500)) {
+                ballCounter++
+                Log.i("ball==", ballCounter.toString())
+                print(ballCounter)
+
+            }
+
+            // Draw the ball counter text
+            val textPaint = Paint().apply {
+                color = Color.BLACK
+                textSize = 200f
+                isAntiAlias = true
+            }
+            canvas.drawText("Score: $ballCounter", 100f, 500f, textPaint)
+
+
+            canvas.drawBitmap(resizedBitmap, ballX, ballY, null)
+            for(normalizedLandmark in landmark) {
+                canvas.drawPoint(
+                    normalizedLandmark.x() * imageWidth * scaleFactor,
+                    normalizedLandmark.y() * imageHeight * scaleFactor,
+                    pointPaint
+                )
+            }
+            PoseLandmarker.POSE_LANDMARKS.forEach {
+                canvas.drawLine(
+                    poseLandmarkerResult.landmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor,
+                    poseLandmarkerResult.landmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor,
+                    poseLandmarkerResult.landmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor,
+                    poseLandmarkerResult.landmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor,
+                    linePaint)
             }
         }
     }
+}
+
 
     fun setResults(
         poseLandmarkerResults: PoseLandmarkerResult,
@@ -113,6 +159,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     }
 
     companion object {
-        private const val LANDMARK_STROKE_WIDTH = 12F
+        private const val LANDMARK_STROKE_WIDTH = 10F
     }
 }
